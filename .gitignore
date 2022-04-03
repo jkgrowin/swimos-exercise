@@ -1,0 +1,8 @@
+/target
+/.idea
+.idea/
+*.ipr
+*.iml
+Icon
+._*
+target
