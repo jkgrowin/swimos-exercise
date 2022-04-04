@@ -1,9 +1,17 @@
 package dev.exercise.server.thread;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.exercise.server.ThreadedServer;
 import dev.exercise.server.enums.CommandType;
 import dev.exercise.server.model.CommandValue;
+import dev.exercise.server.util.JsonPrettyPrinter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,13 +20,17 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.text.ParseException;
-import java.util.regex.Pattern;
 
 import static java.lang.String.format;
 
+@Slf4j
 public class ClientThread extends Thread {
 
-    private static final Pattern PATTERN = Pattern.compile("(?i)^\\{\\s*\"command\"\\s*:\\s*[\"]?(.*?)[\"]?\\s*(?:,\\s*\"value\"\\s*:\\s*[\"]?(.*?)[\"]?\\s*)?}$");
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .defaultPrettyPrinter(new JsonPrettyPrinter())
+            .build();
     protected Socket socket;
     protected PrintWriter out;
 
@@ -55,7 +67,8 @@ public class ClientThread extends Thread {
                 }
                 out.flush();
             } catch (IOException e) {
-                System.out.println("Could not send response to client " + socket.getLocalAddress());
+                log.info("Client {} disconnected", socket.getLocalAddress());
+                ThreadedServer.removeSubscriber(socket.hashCode());
                 return;
             }
         }
@@ -65,22 +78,21 @@ public class ClientThread extends Thread {
      * Performs specified action or sends back error message.
      * @param commandValue The {@link CommandValue}.
      */
-    private void performAction(@NonNull CommandValue commandValue){
+    private void performAction(@NonNull CommandValue commandValue) {
         try {
-            var command = commandValue.getCommand().toUpperCase();
-            switch (CommandType.valueOf(command)) {
+            switch (commandValue.getCommand()) {
                 case GET:
-                    sendMessage("{ \"value\": " + ThreadedServer.getState() + " }");
+                    sendMessage(OBJECT_MAPPER.writeValueAsString(CommandValue.builder().value(ThreadedServer.getState()).build()));
                     break;
                 case SET:
                     ThreadedServer.setState(commandValue.getValue());
-                    ThreadedServer.sendToSubscribers("{ \"value\": " + ThreadedServer.getState() + " }");
+                    ThreadedServer.sendToSubscribers(OBJECT_MAPPER.writeValueAsString(CommandValue.builder().value(ThreadedServer.getState()).build()));
                     break;
                 case SUBSCRIBE:
                     ThreadedServer.addSubscriber(socket.hashCode(), this);
                     break;
             }
-        } catch (IllegalArgumentException e) {
+        } catch (JsonProcessingException | IllegalArgumentException e) {
             out.println(format("Cannot find command: %s", commandValue.getCommand()));
         }
     }
@@ -100,26 +112,19 @@ public class ClientThread extends Thread {
      * @return The {@link CommandValue}.
      */
     public CommandValue parseLine(@NonNull String line) throws ParseException {
-        var commandValue = new CommandValue();
-
-        var matcher = PATTERN.matcher(line);
-        if (matcher.find()) {
-            commandValue.setCommand(matcher.group(1).trim());
-            try {
-                if (commandValue.getCommand().equals("set")) {
-                    if (matcher.group(2) == null) {
-                        throw new ParseException("Missing 'set' value.", 0);
-                    }
-                    var value = Long.parseLong(matcher.group(2).trim());
-                    commandValue.setValue(value);
-                }
-            } catch(NumberFormatException e) {
-                throw new ParseException(format("Incorrect value format. Maximum value is: %s", Long.MAX_VALUE), 0);
+        try {
+            var commandValue = OBJECT_MAPPER.readValue(line, CommandValue.class);
+            if (commandValue.getCommand() == null) {
+                throw new ParseException("Missing command.", 0);
             }
-        } else {
-            throw new ParseException("Incorrect syntax. Required: { \"command\": \"\" }", 0);
+            if (CommandType.SET == commandValue.getCommand() && commandValue.getValue() == null) {
+                throw new ParseException("Missing 'set' value.", 0);
+            }
+            return commandValue;
+        } catch (InvalidFormatException e) {
+            throw new ParseException("Cannot find command " + e.getValue() + " or maximum value " + Long.MAX_VALUE + " exceeded.", 0);
+        } catch (JsonProcessingException e) {
+            throw new ParseException("Incorrect syntax. Required: { \"command\": \"\" } or the maximum value " + Long.MAX_VALUE + " exceeded.", 0);
         }
-        return commandValue;
     }
-
 }

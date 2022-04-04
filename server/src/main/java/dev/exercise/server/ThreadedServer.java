@@ -2,12 +2,14 @@ package dev.exercise.server;
 
 import dev.exercise.server.thread.ClientThread;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 public class ThreadedServer {
 
     private static long state = 0L;
@@ -15,7 +17,7 @@ public class ThreadedServer {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.out.println(("Missing parameters: 'port'"));
+            log.error(("Missing parameters: 'port'"));
             return;
         }
         var port = Integer.parseInt(args[0]);
@@ -25,18 +27,18 @@ public class ThreadedServer {
         try {
             serverSocket = new ServerSocket(port);
         } catch (IOException e) {
-            System.out.println("Failed to start a server: " + port);
+            log.error("Failed to start a server: {}", port);
             return;
         }
 
-        System.out.println("Starting new server on port: " + port);
+        log.info("Starting new server on port: {}", port);
 
         // continuously awaits for new client connections
         while (true) {
             try {
                 socket = serverSocket.accept();
             } catch (IOException e) {
-                System.out.println("I/O error: " + e);
+                log.error("I/O error", e);
             }
             new ClientThread(socket).start();
         }
@@ -50,11 +52,11 @@ public class ThreadedServer {
         ThreadedServer.state = state;
     }
 
-    public static void addSubscriber(@NonNull Integer key, @NonNull ClientThread clientThread) {
+    public static void addSubscriber(int key, @NonNull ClientThread clientThread) {
         subscribers.put(key, clientThread);
     }
 
-    public static void removeSubscriber(@NonNull Integer key) {
+    public static void removeSubscriber(int key) {
         subscribers.remove(key);
     }
 

@@ -209,7 +209,6 @@ public class ServerClientIntegrationTest {
         var response ="";
         while (!"{ \"value\": 11111111111111 }".equals(response = reader.readMessage())) {
             messageCount++;
-            System.out.println(response);
         }
 
         // checks if all 50 state updates were sent back to subscriber
@@ -285,7 +284,45 @@ public class ServerClientIntegrationTest {
         var read = new ClientReadThread(clientSocket);
 
         write.sendMessage("{\"command\":\"pet\"}");
-        assertEquals("Cannot find command: pet", read.readMessage());
+        assertEquals("Cannot find command pet or maximum value 9223372036854775807 exceeded.", read.readMessage());
+
+        write.stopConnection();
+        read.stopConnection();
+        serverSocket.close();
+    }
+
+    @Test
+    public void test_valueTooBig() throws IOException {
+        /* Test scenario 6:
+        Single Client:
+
+        > { "command": "pet" }
+        { "unknown action": 0 }
+        */
+        var port = 7781;
+        var serverSocket = new ServerSocket(port);
+        var running = new AtomicBoolean(false);
+        // Creates new server thread that accepts one socket connection
+        new Thread(() -> {
+            running.set(true);
+            while (running.get()) {
+                try {
+                    var socket = serverSocket.accept();
+                    if (socket != null) {
+                        new ClientThread(socket).start();
+                        running.set(false);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+        var clientSocket = new Socket("localhost", port);
+        var write = new ClientWriteThread(clientSocket);
+        var read = new ClientReadThread(clientSocket);
+
+        write.sendMessage("{\"command\":\"set\",\"value\":9223372036854775808}");
+        assertEquals("Incorrect syntax. Required: { \"command\": \"\" } or the maximum value 9223372036854775807 exceeded.", read.readMessage());
 
         write.stopConnection();
         read.stopConnection();

@@ -1,13 +1,15 @@
 package dev.exercise.client.thread;
 
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
-public class ClientReadThread extends Thread{
+@Slf4j
+public class ClientReadThread extends Thread {
     private final Socket clientSocket;
 
     private final BufferedReader in;
@@ -30,7 +32,7 @@ public class ClientReadThread extends Thread{
                     System.out.println(line);
                 }
             } catch (IOException e) {
-                System.out.println("Failed to read the message.");
+                log.error("Failed to read the message, {}", e.getMessage());
                 return;
             }
         }

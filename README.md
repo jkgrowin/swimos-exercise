@@ -4,8 +4,8 @@ Test notes:
 * copy the repository
 * run mvn clean install in main directory
 * open multiple terminal windows
-* run 'java -jar target/server-1.0-SNAPSHOT.jar 8000' in /server directory
-* run 'java -jar target/client-1.0-SNAPSHOT.jar localhost 8000' in /client directory multiple times
+* run 'java -jar target/server-1.0-SNAPSHOT-jar-with-dependencies.jar 8000' in /server directory
+* run 'java -jar target/client-1.0-SNAPSHOT-jar-with-dependencies.jar localhost 8000' in /client directory multiple times
 * run '{"command":"subscribe"}' on Client3
 * run '{"command":"get"}' on Client3
     * check if value returned is 0
