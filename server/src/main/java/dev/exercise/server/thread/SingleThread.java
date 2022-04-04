@@ -27,9 +27,9 @@ public class SingleThread extends Thread {
 
     @Override
     public void run() {
-        InputStream inp = null;
-        BufferedReader brinp = null;
-        DataOutputStream out = null;
+        InputStream inp;
+        BufferedReader brinp;
+        DataOutputStream out;
         try {
             inp = socket.getInputStream();
             brinp = new BufferedReader(new InputStreamReader(inp));
@@ -63,20 +63,16 @@ public class SingleThread extends Thread {
     private void performAction(@NonNull DataOutputStream out, @NonNull CommandValue commandValue) throws IOException {
         try {
             var command = commandValue.getCommand().toUpperCase();
-            System.out.println("Command to perform: " + command);
             switch (CommandType.valueOf(command)) {
                 case GET:
                     out.writeBytes("{ \"value\": " + ThreadedServer.getState() + " }" + "\n");
                     break;
                 case SET:
-                    System.out.println("Setting state to: " + commandValue.getValue());
                     ThreadedServer.setState(commandValue.getValue());
-                    out.writeBytes("\n");
-                    out.flush();
-                    System.out.println("State set to: " + commandValue.getValue());
+                    ThreadedServer.sendToSubscribers("{ \"value\": " + ThreadedServer.getState() + " }" + "\n");
                     break;
                 case SUBSCRIBE:
-                    System.out.println("subs to do");
+                    ThreadedServer.addSubscriber(socket.hashCode(), socket);
                     break;
             }
         } catch (IllegalArgumentException e) {
@@ -91,7 +87,6 @@ public class SingleThread extends Thread {
      */
     public CommandValue parseLine(@NonNull String line) throws ParseException {
         var commandValue = new CommandValue();
-        System.out.println("parseLine: " + line);
 
         var matcher = PATTERN.matcher(line);
         if (matcher.find()) {
@@ -103,7 +98,6 @@ public class SingleThread extends Thread {
                     }
                     var value = Long.parseLong(matcher.group(2).trim());
                     commandValue.setValue(value);
-                    System.out.println("value: " + commandValue.getValue());
                 }
             } catch(NumberFormatException e) {
                 throw new ParseException(format("Incorrect value format. Maximum value is: %s", Long.MAX_VALUE), 0);
@@ -111,7 +105,6 @@ public class SingleThread extends Thread {
         } else {
             throw new ParseException("Incorrect syntax. Required: { \"command\": \"\" }", 0);
         }
-        System.out.println("Command: " + commandValue.getCommand());
         return commandValue;
     }
 
