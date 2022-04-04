@@ -1,4 +1,4 @@
-package dev.exercise.client.client;
+package dev.exercise.client.thread;
 
 import lombok.NonNull;
 
@@ -28,13 +28,17 @@ public class ClientWriteThread extends Thread{
                     stopConnection();
                     return;
                 } else {
-                    out.println(line);
+                    sendMessage(line);
                 }
             } catch (IOException e) {
                 System.out.println("Failed to write the message.");
                 return;
             }
         }
+    }
+
+    public void sendMessage(@NonNull String line) {
+        out.println(line);
     }
 
     public void stopConnection() throws IOException {

@@ -1,4 +1,4 @@
-package dev.exercise.client.client;
+package dev.exercise.client.thread;
 
 import lombok.NonNull;
 
@@ -9,6 +9,7 @@ import java.net.Socket;
 
 public class ClientReadThread extends Thread{
     private final Socket clientSocket;
+
     private final BufferedReader in;
 
     public ClientReadThread(@NonNull Socket socket) throws IOException {
@@ -20,7 +21,7 @@ public class ClientReadThread extends Thread{
     public void run() {
         while (true) {
             try {
-                var line = in.readLine();
+                var line = readMessage();
                 if (line == null) {
                     stopConnection();
                     return;
@@ -34,8 +35,16 @@ public class ClientReadThread extends Thread{
         }
     }
 
+    public String readMessage() throws IOException {
+        return in.readLine();
+    }
+
     public void stopConnection() throws IOException {
         in.close();
         clientSocket.close();
+    }
+
+    public BufferedReader getIn() {
+        return in;
     }
 }

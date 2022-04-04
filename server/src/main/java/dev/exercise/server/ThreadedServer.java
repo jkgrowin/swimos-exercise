@@ -58,6 +58,10 @@ public class ThreadedServer {
         subscribers.remove(key);
     }
 
+    public static void clearSubscribers() {
+        subscribers.clear();
+    }
+
     public static void sendToSubscribers(@NonNull String message) {
         subscribers.values().forEach(s -> {
             try {

@@ -1,7 +1,7 @@
 package dev.exercise.client;
 
-import dev.exercise.client.client.ClientReadThread;
-import dev.exercise.client.client.ClientWriteThread;
+import dev.exercise.client.thread.ClientReadThread;
+import dev.exercise.client.thread.ClientWriteThread;
 
 import java.io.IOException;
 import java.net.Socket;
