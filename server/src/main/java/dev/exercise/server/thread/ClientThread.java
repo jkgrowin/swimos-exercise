@@ -6,22 +6,23 @@ import dev.exercise.server.model.CommandValue;
 import lombok.NonNull;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.text.ParseException;
 import java.util.regex.Pattern;
 
 import static java.lang.String.format;
 
-public class SingleThread extends Thread {
+public class ClientThread extends Thread {
 
     private static final Pattern PATTERN = Pattern.compile("(?i)^\\{\\s*\"command\"\\s*:\\s*[\"]?(.*?)[\"]?\\s*(?:,\\s*\"value\"\\s*:\\s*[\"]?(.*?)[\"]?\\s*)?}$");
     protected Socket socket;
+    protected PrintWriter out;
 
-    public SingleThread(Socket clientSocket) {
+    public ClientThread(Socket clientSocket) {
         this.socket = clientSocket;
     }
 
@@ -29,27 +30,27 @@ public class SingleThread extends Thread {
     public void run() {
         InputStream inp;
         BufferedReader brinp;
-        DataOutputStream out;
         try {
             inp = socket.getInputStream();
             brinp = new BufferedReader(new InputStreamReader(inp));
-            out = new DataOutputStream(socket.getOutputStream());
+            out = new PrintWriter(socket.getOutputStream(), true);
         } catch (IOException e) {
             return;
         }
         String line;
+        // continuously reads client's message and performs specified action
         while (true) {
             try {
                 line = brinp.readLine();
-                if (line == null || line.equalsIgnoreCase("QUIT")) {
+                if (line == null) {
                     socket.close();
                     return;
                 } else {
                     try {
                         var commandValue = parseLine(line);
-                        performAction(out, commandValue);
+                        performAction(commandValue);
                     } catch (ParseException e) {
-                        out.writeBytes(e.getMessage() + "\n");
+                        out.println(e.getMessage());
                     }
                 }
                 out.flush();
@@ -60,24 +61,37 @@ public class SingleThread extends Thread {
         }
     }
 
-    private void performAction(@NonNull DataOutputStream out, @NonNull CommandValue commandValue) throws IOException {
+    /**
+     * Performs specified action or sends back error message.
+     * @param commandValue The {@link CommandValue}.
+     */
+    private void performAction(@NonNull CommandValue commandValue){
         try {
             var command = commandValue.getCommand().toUpperCase();
             switch (CommandType.valueOf(command)) {
                 case GET:
-                    out.writeBytes("{ \"value\": " + ThreadedServer.getState() + " }" + "\n");
+                    sendMessage("{ \"value\": " + ThreadedServer.getState() + " }");
                     break;
                 case SET:
                     ThreadedServer.setState(commandValue.getValue());
-                    ThreadedServer.sendToSubscribers("{ \"value\": " + ThreadedServer.getState() + " }" + "\n");
+                    ThreadedServer.sendToSubscribers("{ \"value\": " + ThreadedServer.getState() + " }");
                     break;
                 case SUBSCRIBE:
-                    ThreadedServer.addSubscriber(socket.hashCode(), socket);
+                    ThreadedServer.addSubscriber(socket.hashCode(), this);
                     break;
             }
         } catch (IllegalArgumentException e) {
-            out.writeBytes(format("Cannot find command: %s" + "\n", commandValue.getCommand()));
+            out.println(format("Cannot find command: %s", commandValue.getCommand()));
         }
+    }
+
+    /**
+     * Sends message to Client.
+     * @param message The message content.
+     */
+    public void sendMessage(@NonNull String message) {
+        out.println(message);
+        out.flush();
     }
 
     /**

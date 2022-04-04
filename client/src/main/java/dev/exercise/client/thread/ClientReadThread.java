@@ -19,6 +19,7 @@ public class ClientReadThread extends Thread{
 
     @Override
     public void run() {
+        // continuously reads and prints incoming values
         while (true) {
             try {
                 var line = readMessage();
@@ -42,9 +43,5 @@ public class ClientReadThread extends Thread{
     public void stopConnection() throws IOException {
         in.close();
         clientSocket.close();
-    }
-
-    public BufferedReader getIn() {
-        return in;
     }
 }

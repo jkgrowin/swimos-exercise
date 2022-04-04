@@ -1,6 +1,6 @@
 package server.thread;
 
-import dev.exercise.server.thread.SingleThread;
+import dev.exercise.server.thread.ClientThread;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -9,23 +9,20 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.net.Socket;
 import java.text.ParseException;
-import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 @RunWith(MockitoJUnitRunner.class)
-public class SingleThreadTest {
-    private static final Pattern PATTERN = Pattern.compile("(?i)^\\{\\s*\"command\"\\s*:\\s*[\"]?(.*?)[\"]?,\\s*\"value\"\\s*:\\s*[\"]?(.*?)[\"]?\\s*}$");
-
+public class ClientThreadTest {
     @Mock
     private Socket socket;
 
-    private SingleThread singleThread;
+    private ClientThread clientThread;
 
     @Before
     public void setUp() {
-        singleThread = new SingleThread(socket);
+        clientThread = new ClientThread(socket);
     }
 
     @Test
@@ -34,7 +31,7 @@ public class SingleThreadTest {
         long value = 2;
 
         var line = "{ \"command\": \"set\", \"value\": 2 }";
-        var result = singleThread.parseLine(line);
+        var result = clientThread.parseLine(line);
         assertEquals(command, result.getCommand());
         assertEquals(value, (long) result.getValue());
     }
@@ -42,27 +39,27 @@ public class SingleThreadTest {
     @Test (expected = ParseException.class)
     public void testParseLine_incorrectCommand() throws ParseException {
         var line = "{ \"band\": \"set\", \"value\": 2 }";
-        singleThread.parseLine(line);
+        clientThread.parseLine(line);
     }
 
     @Test (expected = ParseException.class)
     public void testParseLine_incorrectValue() throws ParseException {
         var line = "{ \"command\": \"set\", \"value\": 2d }";
-        singleThread.parseLine(line);
+        clientThread.parseLine(line);
     }
 
     @Test(expected = ParseException.class)
     public void testParseLine_valueTooBig() throws ParseException {
         var value = "9223372036854775808";
         var line = "{ \"command\": \"set\", \"value\": " + value + " }";
-        singleThread.parseLine(line);
+        clientThread.parseLine(line);
     }
 
     @Test
     public void testParseLine_get() throws ParseException {
         var command = "get";
         var line = "{ \"command\": \"get\" }";
-        var result = singleThread.parseLine(line);
+        var result = clientThread.parseLine(line);
         assertEquals(command, result.getCommand());
         assertNull(result.getValue());
     }

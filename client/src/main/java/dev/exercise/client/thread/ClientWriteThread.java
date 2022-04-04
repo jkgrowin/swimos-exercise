@@ -21,6 +21,7 @@ public class ClientWriteThread extends Thread{
 
     @Override
     public void run() {
+        // continuously reads user's input and sends it to server
         while (true) {
             try {
                 var line = stdIn.readLine();
