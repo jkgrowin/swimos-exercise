@@ -27,7 +27,8 @@ public class ClientReadThread extends Thread {
                 var line = readMessage();
                 if (line == null) {
                     stopConnection();
-                    return;
+                    log.info("Connection is now closed.");
+                    System.exit(0);
                 } else {
                     System.out.println(line);
                 }
